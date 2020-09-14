@@ -25,9 +25,121 @@ namespace HitPoints.Tests
         }
 
         [TestMethod]
+        public void TestSimpleDamageEvent() {
+            var pc = basicPlayerCharacter();
+            pc.HPEvents.Add(new HPEvent{
+                HPEventType = HPEventType.Damage,
+                Amount = 10,
+                DamageType=DamageType.Fire,
+            });
+            Assert.AreEqual(pc.CurrentHitPoints, pc.BaseHitPoints-10);
+        }
+
+        [TestMethod]
+        public void TestTempHPAfterDamage() {
+            var pc = basicPlayerCharacter();
+            pc.HPEvents.Add(new HPEvent{
+                HPEventType = HPEventType.Damage,
+                Amount = 10,
+                DamageType=DamageType.Fire,
+            });
+            pc.HPEvents.Add(new HPEvent{
+                HPEventType = HPEventType.TempHitPoints,
+                Amount=15,
+            });
+            Assert.AreEqual(pc.CurrentHitPoints, pc.BaseHitPoints+5);
+        }
+
+        [TestMethod]
+        public void TestHealAfterTempHP() {
+            var pc = basicPlayerCharacter();
+            pc.HPEvents.Add(new HPEvent{
+                HPEventType = HPEventType.TempHitPoints,
+                Amount = 10,
+            });
+            pc.HPEvents.Add(new HPEvent{
+                HPEventType = HPEventType.Heal,
+                Amount=15,
+            });
+            Assert.AreEqual(pc.CurrentHitPoints, pc.BaseHitPoints+10);
+        }
+
+        [TestMethod]
+        public void TestResistedDamageEvent() {
+            var pc = basicPlayerCharacter();
+            pc.HPEvents.Add(new HPEvent{
+                HPEventType = HPEventType.Damage,
+                Amount = 10,
+                DamageType=DamageType.Fire,
+            });
+            pc.Defenses.Add(new Defense{
+                DamageType=DamageType.Fire,
+                DefenseType = DefenseType.Resistance,
+            });
+            Assert.AreEqual(pc.CurrentHitPoints, pc.BaseHitPoints-5);
+        }
+
+       
+        [TestMethod]
+        public void TestImmuneDamageEvent() {
+            var pc = basicPlayerCharacter();
+            pc.HPEvents.Add(new HPEvent{
+                HPEventType = HPEventType.Damage,
+                Amount = 10,
+                DamageType=DamageType.Fire,
+            });
+            pc.Defenses.Add(new Defense{
+                DamageType=DamageType.Fire,
+                DefenseType = DefenseType.Immunity,
+            });
+            Assert.AreEqual(pc.CurrentHitPoints, pc.BaseHitPoints);
+        }
+
+        
+        [TestMethod]
+        public void TestHealingDamageEvent() {
+            var pc = basicPlayerCharacter();
+            pc.HPEvents.Add(new HPEvent{
+                HPEventType = HPEventType.Damage,
+                Amount = 10,
+                DamageType=DamageType.Fire,
+            });
+            pc.HPEvents.Add(new HPEvent{
+                HPEventType = HPEventType.Heal,
+                Amount = 15,
+            });
+            Assert.AreEqual(pc.CurrentHitPoints, pc.BaseHitPoints);
+        }
+
+          
+        [TestMethod]
+        public void TestTempHPHealing() {
+            var pc = basicPlayerCharacter();
+            pc.HPEvents.Add(new HPEvent{
+                HPEventType = HPEventType.TempHitPoints,
+                Amount = 5,
+            });
+            pc.HPEvents.Add(new HPEvent{
+                HPEventType = HPEventType.Damage,
+                Amount = 10,
+                DamageType=DamageType.Fire,
+            });
+            pc.HPEvents.Add(new HPEvent{
+                HPEventType = HPEventType.Heal,
+                Amount = 15,
+            });
+            Assert.AreEqual(pc.CurrentHitPoints, pc.BaseHitPoints);
+        } 
+
+        [TestMethod]
         public void TestEffectiveCon()
         {
-            var pc = new PlayerCharacter{
+            var pc = basicPlayerCharacter();
+            Assert.AreEqual(14, pc.EffectiveConstitution);
+        }
+
+        private PlayerCharacter basicPlayerCharacter() {
+            return new PlayerCharacter{
                 Stats = new Stats {
                     Strength = 10,
                     Dexterity = 11,
@@ -60,7 +172,6 @@ namespace HitPoints.Tests
                     }
                 }
             };
-            Assert.AreEqual(14, pc.EffectiveConstitution);
         }
     }
 }

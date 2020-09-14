@@ -29,18 +29,30 @@ namespace HitPoints
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddDbContext<Context>(options =>
+            services.AddDbContext<Context>(options => 
                     options.UseInMemoryDatabase("PlayerCharacter"));
-            services.AddControllers();
+            services.AddControllers()
+                .AddJsonOptions(options=> {
+                    options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+                    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+                });
+            services.AddSwaggerGen();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(Context context, IApplicationBuilder app, IWebHostEnvironment env)
         {
+            
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
             }
+            app.UseSwagger();
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "HitPoint API V1");
+                c.RoutePrefix = string.Empty;
+            });
 
             app.UseRouting();
 
@@ -59,6 +71,7 @@ namespace HitPoints
             options.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
             var briv = JsonSerializer.Deserialize<PlayerCharacter>(jsonData, options);
             context.PlayerCharacter.Add(briv);
+            context.SaveChanges();
         }
     }
 }

@@ -9,7 +9,7 @@ using HitPoints.Models;
 
 namespace HitPoints.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("[controller]")]
     [ApiController]
     public class PlayerCharacterController : ControllerBase
     {
@@ -20,18 +20,29 @@ namespace HitPoints.Controllers
             _context = context;
         }
 
-        // GET: api/PlayerCharacter
+        // GET: a list of player characters
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<PlayerCharacter>>> GetPlayerCharacter()
+        public async Task<ActionResult<IEnumerable<PlayerCharacterSummary>>> GetPlayerCharacter()
         {
-            return await _context.PlayerCharacter.ToListAsync();
+            return await _context.PlayerCharacter.Select(p => new PlayerCharacterSummary{
+                Id = p.Id,
+                Name = p.Name
+            }).ToListAsync();
         }
 
         // GET: api/PlayerCharacter/5
         [HttpGet("{id}")]
         public async Task<ActionResult<PlayerCharacter>> GetPlayerCharacter(long id)
         {
-            var playerCharacter = await _context.PlayerCharacter.FindAsync(id);
+            var playerCharacter = await _context.PlayerCharacter
+                .Include(i => i.Classes)
+                .Include(i => i.Stats)
+                .Include(i => i.Items)
+                .ThenInclude(it => it.Modifier)
+                .Include(i => i.Defenses)
+                .Include(pc => pc.HPEvents)
+                .Where(character=>character.Id == id)
+                .FirstAsync();
 
             if (playerCharacter == null)
             {
@@ -41,17 +52,16 @@ namespace HitPoints.Controllers
             return playerCharacter;
         }
 
-        // PUT: api/PlayerCharacter/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to, for
-        // more details, see https://go.microsoft.com/fwlink/?linkid=2123754.
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutPlayerCharacter(long id, PlayerCharacter playerCharacter)
-        {
-            if (id != playerCharacter.Id)
-            {
-                return BadRequest();
-            }
 
+        [HttpPost("{id}/damage")]
+        public async Task<ActionResult> DamagePlayerCharacter(long id, Damage damage) {
+            var playerCharacter = await _context.PlayerCharacter.FindAsync(id);
+            playerCharacter.HPEvents.Add(new HPEvent{
+                DamageType = damage.Type,
+                HPEventType = HPEventType.Damage,
+                Amount = damage.Amount,
+            });
+            
             _context.Entry(playerCharacter).State = EntityState.Modified;
 
             try
@@ -73,37 +83,72 @@ namespace HitPoints.Controllers
             return NoContent();
         }
 
-        // POST: api/PlayerCharacter
-        // To protect from overposting attacks, enable the specific properties you want to bind to, for
-        // more details, see https://go.microsoft.com/fwlink/?linkid=2123754.
-        [HttpPost]
-        public async Task<ActionResult<PlayerCharacter>> PostPlayerCharacter(PlayerCharacter playerCharacter)
-        {
-            _context.PlayerCharacter.Add(playerCharacter);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetPlayerCharacter", new { id = playerCharacter.Id }, playerCharacter);
-        }
-
-        // DELETE: api/PlayerCharacter/5
-        [HttpDelete("{id}")]
-        public async Task<ActionResult<PlayerCharacter>> DeletePlayerCharacter(long id)
-        {
+        [HttpPost("{id}/tempHitPoint")]
+        public async Task<ActionResult> TempHitPointPlayerCharacter(long id, TempHitpoint tempHitPoints) {
             var playerCharacter = await _context.PlayerCharacter.FindAsync(id);
-            if (playerCharacter == null)
+            playerCharacter.HPEvents.Add(new HPEvent{
+                HPEventType = HPEventType.TempHitPoints,
+                Amount = tempHitPoints.Amount,
+            });
+            
+            _context.Entry(playerCharacter).State = EntityState.Modified;
+
+            try
             {
-                return NotFound();
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!PlayerCharacterExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
             }
 
-            _context.PlayerCharacter.Remove(playerCharacter);
-            await _context.SaveChangesAsync();
-
-            return playerCharacter;
+            return NoContent();
         }
+        
+        [HttpPost("{id}/heal")]
+        public async Task<ActionResult> HealPlayerCharacter(long id, Heal heal) {
+            var playerCharacter = await _context.PlayerCharacter.FindAsync(id);
+            playerCharacter.HPEvents.Add(new HPEvent{
+                HPEventType = HPEventType.Heal,
+                Amount = heal.Amount,
+            });
+            
+            _context.Entry(playerCharacter).State = EntityState.Modified;
 
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!PlayerCharacterExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+            return NoContent();
+        }
         private bool PlayerCharacterExists(long id)
         {
             return _context.PlayerCharacter.Any(e => e.Id == id);
         }
+    }
+
+    public class PlayerCharacterSummary
+    {
+        public long Id { get; set; }
+        public string Name { get; set; }
     }
 }

@@ -1,28 +1,28 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace HitPoints.Models {
+namespace HitPoints.Models
+{
 
-public enum DamageType {
-    slashing,
-    piercing,
-    bludgeoning,
-    cold,
-    poison,
-    acid,
-    psychic,
-    fire,
-    necrotic,
-    radiant, 
-    force,
-    thunder,
-    lighting,
-}
+    public enum DamageType
+    {
+        Slashing,
+        Piercing,
+        Bludgeoning,
+        Cold,
+        Poison,
+        Acid,
+        Psychic,
+        Fire,
+        Necrotic,
+        Radiant,
+        Force,
+        Thunder,
+        Lighting,
+    }
 
-public class Damage {
-    public long Id { get; set;}
-    public long Amount {get; set;}
-    public DamageType Type {get; set;}
-    public bool IsMagic {get; set;}
-}
-
+    public class Damage
+    {
+        public int Amount { get; set; }
+        public DamageType Type { get; set; }
+    }
 }

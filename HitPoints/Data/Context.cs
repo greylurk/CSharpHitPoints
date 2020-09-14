@@ -12,7 +12,5 @@ using HitPoints.Models;
         {
         }
 
-        public DbSet<HitPoints.Models.Damage> Damage { get; set; }
-
         public DbSet<HitPoints.Models.PlayerCharacter> PlayerCharacter { get; set; }
     }
