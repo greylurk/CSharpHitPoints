@@ -70,13 +70,6 @@ namespace HitPoints.Models
 
     public class PlayerCharacter
     {
-        public PlayerCharacter()
-        {
-            HPEvents = new List<HPEvent>();
-            Defenses = new List<Defense>();
-            Items = new List<Item>();
-        }
-
         [JsonIgnore]
         public long Id { get; set; }
         public string Name { get; set; }
@@ -87,7 +80,7 @@ namespace HitPoints.Models
         public List<Defense> Defenses { get; set; } = new List<Defense>();
 
         // This is effectively a chronological event log. 
-        public List<HPEvent> HPEvents { get; set; }
+        public List<HPEvent> HPEvents { get; set; } = new List<HPEvent>();
 
         // Maybe memoize? I trust Linq performance (for now)
         [NotMapped]
@@ -120,7 +113,8 @@ namespace HitPoints.Models
 
 
         [NotMapped]
-        // Memoize? In a large scale prod app, I'd probably CQRS this, but for now this should be performant enough.
+        // Memoize? In a large scale prod app, I'd probably CQRS this, which
+        // is effectively memoizing, but for now this should be performant enough.
         public int CurrentHitPoints
         {
             get
@@ -130,6 +124,8 @@ namespace HitPoints.Models
                 {
                     return currentHitPoints;
                 }
+                // Get all the events since the last long rest, and apply them statefully to find out our new
+                // HP total. 
                 var lastLongRest = HPEvents.FindLastIndex(evt => evt.HPEventType == HPEventType.LongRest);
                 var interestingEvents = HPEvents.Count - 1 - lastLongRest;
                 HPEvents.TakeLast(interestingEvents)
@@ -140,62 +136,67 @@ namespace HitPoints.Models
             }
         }
 
-        private static bool IsImmune(Defense defense, DamageType? damageType) {
+        private static bool IsImmune(Defense defense, DamageType? damageType)
+        {
             return defense.DamageType == damageType && defense.DefenseType == DefenseType.Immunity;
         }
 
-        private static bool IsResistant(Defense defense, DamageType? damageType) {
+        private static bool IsResistant(Defense defense, DamageType? damageType)
+        {
             return defense.DamageType == damageType && defense.DefenseType == DefenseType.Resistance;
         }
 
+        // Kind of an odd method. 
         private int applyHPEvent(int currentHitPoints, HPEvent hpEvent)
         {
-            int newHitPoints = currentHitPoints;
             // Might switch this over to a Command Pattern? C in CQRS
+            // Java Enums are full objects, making a Command pattern from an Enum
+            // reasonably elegant to implement. I'm not sure if there's a similarly
+            // elegant way in C#
             switch (hpEvent.HPEventType)
             {
                 case HPEventType.Damage:
-                    if (Defenses.Any(def => IsImmune(def, hpEvent.DamageType)))
-                    {
-                        break; // they're immune, don't change HP total
-                    }
-                    else if (Defenses.Any(def => IsResistant(def, hpEvent.DamageType)))
-                    {
-                        newHitPoints -= hpEvent.Amount / 2;
-                    }
-                    else
-                    {
-                        newHitPoints -= hpEvent.Amount;
-                    }
-                    break;
-
+                    return applyDamage(hpEvent.Amount, hpEvent.DamageType.GetValueOrDefault(DamageType.Slashing), currentHitPoints);
                 case HPEventType.TempHitPoints:
-                    // Interesting I'd never thought of it this way, but effectively Temp hit points are just healing without
-                    // a cap. Normal healing caps out at your base hp, but temp hp doesn't cap out there. 
-                    newHitPoints += hpEvent.Amount;
-                    break;
-
+                    return currentHitPoints + hpEvent.Amount;
                 case HPEventType.Heal:
-                    if (currentHitPoints > BaseHitPoints)
-                    {
-                        // If we've still got temporary hit points, don't erase them
-                        break;
-                    }
-                    newHitPoints = Math.Min(BaseHitPoints, currentHitPoints + hpEvent.Amount);
-                    break;
+                    return applyHealing(hpEvent.Amount, currentHitPoints);
                 case HPEventType.ShortRest:
                     // Short Rests erase temporary hit points, and heal a number of hit dice (outside of scope, but a good skeleton)
-                    newHitPoints = Math.Min(BaseHitPoints, currentHitPoints + hpEvent.Amount);
-                    break;
-
+                    return Math.Min(BaseHitPoints, currentHitPoints + hpEvent.Amount);
                 case HPEventType.LongRest:
-                    // 
-                    newHitPoints = BaseHitPoints;
-                    break;
+                    // This code path isn't used in this app.  It might be in the future? 
+                    return BaseHitPoints;
+                default:
+                    // C# wants all possible code paths to return something, but doesn't realize that I've exhausted the enum. 
+                    return 0;
+            }
+        }
+
+        private int applyHealing(int amount, int currentHitPoints) {
+            // If you have bonus temp HP above your base, healing doesn't wipe them out.
+            if(currentHitPoints > BaseHitPoints) {
+                return currentHitPoints;
+            }
+            return Math.Min(currentHitPoints + amount, BaseHitPoints);
+        }
+        private int applyDamage(int damage, DamageType damageType, int currentHitPoints)
+        {
+            var newHitPoints = currentHitPoints;
+            if (Defenses.Any(def => IsImmune(def, damageType)))
+            {
+                return newHitPoints; // they're immune, don't change HP total
+            }
+            else if (Defenses.Any(def => IsResistant(def, damageType)))
+            {
+                newHitPoints -= damage / 2;
+            }
+            else
+            {
+                newHitPoints -= damage;
             }
             return newHitPoints;
         }
-
     }
 
 
