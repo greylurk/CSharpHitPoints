@@ -158,6 +158,7 @@ namespace HitPoints.Models
                 case HPEventType.Damage:
                     return applyDamage(hpEvent.Amount, hpEvent.DamageType.GetValueOrDefault(DamageType.Slashing), currentHitPoints);
                 case HPEventType.TempHitPoints:
+                    // An interesting viewpoint: TempHP is basically healing without regard for your "cap"
                     return currentHitPoints + hpEvent.Amount;
                 case HPEventType.Heal:
                     return applyHealing(hpEvent.Amount, currentHitPoints);
@@ -199,13 +200,4 @@ namespace HitPoints.Models
         }
     }
 
-
-    public class TempHitpoint
-    {
-        public int Amount { get; set; }
-    }
-    public class Heal
-    {
-        public int Amount { get; set; }
-    }
 }
