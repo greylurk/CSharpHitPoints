@@ -13,8 +13,8 @@ namespace HitPoints.Tests
                 Stats = new Stats {
                     Constitution = 16
                 },
-                Classes = new List<CharacterClass> {
-                    new CharacterClass {
+                Levels = new List<Level> {
+                    new Level {
                         ClassLevel = 10,
                         HitDiceValue = 8,
                         Name = "Cleric"

@@ -35,7 +35,7 @@ namespace HitPoints.Controllers
         public async Task<ActionResult<PlayerCharacter>> GetPlayerCharacter(long id)
         {
             var playerCharacter = await _context.PlayerCharacter
-                .Include(i => i.Classes)
+                .Include(i => i.Levels)
                 .Include(i => i.Stats)
                 .Include(i => i.Items)
                 .ThenInclude(it => it.Modifier)
