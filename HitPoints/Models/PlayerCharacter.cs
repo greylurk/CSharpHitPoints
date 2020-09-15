@@ -6,6 +6,7 @@ using System.Text.Json.Serialization;
 
 namespace HitPoints.Models
 {
+    /// <summary>A list of the types of damage defense that a character can have</summary>
     public enum DefenseType
     {
         Resistance,
@@ -35,6 +36,14 @@ namespace HitPoints.Models
         public DefenseType DefenseType { get; set; }
         [JsonPropertyName("type")]
         public DamageType DamageType { get; set; }
+
+        public bool IsImmune(DamageType damageType) {
+            return DamageType == damageType && DefenseType == DefenseType.Immunity;
+        }
+
+        public bool IsResistant(DamageType damageType) {
+            return DamageType == damageType && DefenseType == DefenseType.Resistance;
+        }
     }
 
     public class Stats
@@ -135,17 +144,6 @@ namespace HitPoints.Models
                 return currentHitPoints;
             }
         }
-
-        private static bool IsImmune(Defense defense, DamageType? damageType)
-        {
-            return defense.DamageType == damageType && defense.DefenseType == DefenseType.Immunity;
-        }
-
-        private static bool IsResistant(Defense defense, DamageType? damageType)
-        {
-            return defense.DamageType == damageType && defense.DefenseType == DefenseType.Resistance;
-        }
-
         // Kind of an odd method. 
         private int applyHPEvent(int currentHitPoints, HPEvent hpEvent)
         {
@@ -183,20 +181,24 @@ namespace HitPoints.Models
         }
         private int applyDamage(int damage, DamageType damageType, int currentHitPoints)
         {
-            var newHitPoints = currentHitPoints;
-            if (Defenses.Any(def => IsImmune(def, damageType)))
+            if (IsImmune(damageType))
             {
-                return newHitPoints; // they're immune, don't change HP total
+                return currentHitPoints; // they're immune, don't change HP total
             }
-            else if (Defenses.Any(def => IsResistant(def, damageType)))
+            else if (IsResistant(damageType))
             {
-                newHitPoints -= damage / 2;
+                return currentHitPoints - damage / 2;
             }
-            else
-            {
-                newHitPoints -= damage;
-            }
-            return newHitPoints;
+            return currentHitPoints - damage;
+        }
+
+        private bool IsImmune(DamageType damageType)
+        {
+            return Defenses.Any(def => def.IsImmune(damageType));
+        }
+        
+        public bool IsResistant(DamageType damageType) {
+            return Defenses.Any(def => def.IsResistant(damageType));
         }
     }
 
